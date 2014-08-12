@@ -6,7 +6,9 @@
         "name": "serandives",
         "email": "serandives@gmail.com"
     },
-    "dependencies": {},
+    "dependencies": {
+        "proxy": "serandules/proxy#master"
+    },
     "repository": {
         "type": "git",
         "url": "git://github.com/serandules/hub-agent.git"
