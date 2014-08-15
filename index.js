@@ -16,56 +16,57 @@ module.exports = function (server) {
 };
 
 module.exports.proxy = function (self) {
-    var options = {};
-    var allow = function (drone) {
-        var domain = drone.domain;
-        if (domain.indexOf('*.') === -1) {
-            domain = domain.substring(2);
-            if (domain === self) {
-                return;
-            }
-        } else if (domain !== self) {
-            return;
-        }
-        var opts = options[domain] || (options[domain] = []);
-        opts.drones.push({
-            ip: drone.ip,
-            port: drone.port
-        });
-    };
-    var disallow = function (drone) {
-        var opts = options[drone.domain];
-        if (!opts) {
-            return;
-        }
-        var i, length = opts.length;
-        for (i = 0; i < length; i++) {
-            var opt = opts[i];
-            if (opt.ip === drone.ip && opt.port === drone.port) {
-                opt.splice(i, 1);
-                break;
+    var allow = function (domains) {
+        var name, opts,
+            options = {};
+        for (name in domains) {
+            if (domains.hasOwnProperty(name)) {
+                if (name.indexOf('*.') === -1) {
+                    console.log('load balancing drone : ' + name);
+                    name = name.substring(2);
+                    if (self === name) {
+                        console.log('self domain, skipping proxying');
+                        return;
+                    }
+                } else if (self !== name) {
+                    return;
+                }
+                options[name] = domains[name];
             }
         }
+        console.log('proxying allowed : ' + JSON.stringify(options));
+        return options;
     };
+    /*var disallow = function (drone) {
+     var opts = options[drone.domain];
+     if (!opts) {
+     return;
+     }
+     var i, length = opts.length;
+     for (i = 0; i < length; i++) {
+     var opt = opts[i];
+     if (opt.ip === drone.ip && opt.port === drone.port) {
+     opt.splice(i, 1);
+     break;
+     }
+     }
+     };*/
     var prxy;
     process.on('message', function (data) {
         switch (data.event) {
             case 'drone joined':
                 console.log('drone jointed : ' + JSON.stringify(data.drone));
-                allow(data.drone);
+                //allow(data.drone);
                 break;
             case 'drone left':
                 console.log('drone left : ' + JSON.stringify(data.drone));
-                disallow(data.drone);
+                //disallow(data.drone);
                 break;
-            case 'drones list':
-                console.log('drones : ' + JSON.stringify(data.drones));
-                data.drones.forEach(function (drone) {
-                    allow(drone);
-                });
+            case 'drones update':
+                console.log('drones : ' + JSON.stringify(data.domains));
+                prxy = proxy(allow(data.domains));
                 break;
         }
-        prxy = proxy(options);
     });
     return function (req, res, next) {
         console.log('proxying requests with : ' + JSON.stringify(options));
