@@ -23,7 +23,8 @@ module.exports.proxy = function (self) {
             if (domains.hasOwnProperty(id)) {
                 o = domains[id];
                 name = o.domain.name;
-                if (name.indexOf('*.') === 0) {
+                console.log('name : ' + name + ' index : ' + name.indexOf('*.'));
+                if (name.indexOf('*.') == 0) {
                     console.log('load balancing drone : ' + name);
                     name = name.substring(2);
                     console.log('domain : ' + name + ' self : ' + self);
@@ -31,7 +32,7 @@ module.exports.proxy = function (self) {
                         console.log('self domain, skipping proxying');
                         return;
                     }
-                } else if (self !== name) {
+                } else if (self === name) {
                     return;
                 }
                 options[name] = o.drones;
