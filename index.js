@@ -59,14 +59,6 @@ module.exports.proxy = function (self) {
     var prxy;
     process.on('message', function (data) {
         switch (data.event) {
-            case 'drone joined':
-                console.log('drone jointed : ' + JSON.stringify(data.drone));
-                //allow(data.drone);
-                break;
-            case 'drone left':
-                console.log('drone left : ' + JSON.stringify(data.drone));
-                //disallow(data.drone);
-                break;
             case 'drones update':
                 console.log('drones : ' + JSON.stringify(data.domains));
                 prxy = proxy(allow(data.domains));
@@ -74,7 +66,6 @@ module.exports.proxy = function (self) {
         }
     });
     return function (req, res, next) {
-        console.log('proxying requests with : ' + JSON.stringify(options));
         prxy ? prxy(req, res, next) : next();
     };
 };
