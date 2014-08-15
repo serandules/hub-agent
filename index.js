@@ -17,10 +17,12 @@ module.exports = function (server) {
 
 module.exports.proxy = function (self) {
     var allow = function (domains) {
-        var name, opts,
+        var id, name, o,
             options = {};
-        for (name in domains) {
-            if (domains.hasOwnProperty(name)) {
+        for (id in domains) {
+            if (domains.hasOwnProperty(id)) {
+                o = domains[id];
+                name = o.domain.name;
                 if (name.indexOf('*.') === -1) {
                     console.log('load balancing drone : ' + name);
                     name = name.substring(2);
@@ -31,7 +33,7 @@ module.exports.proxy = function (self) {
                 } else if (self !== name) {
                     return;
                 }
-                options[name] = domains[name];
+                options[id] = o.drones;
             }
         }
         console.log('proxying allowed : ' + JSON.stringify(options));
