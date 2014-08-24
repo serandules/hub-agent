@@ -60,12 +60,14 @@ module.exports.proxy = function (self) {
     process.on('message', function (data) {
         switch (data.event) {
             case 'drones update':
+                console.log('===========================status 7===========================');
                 console.log('drones : ' + JSON.stringify(data.domains));
                 prxy = proxy(allow(data.domains));
                 break;
         }
     });
     return function (req, res, next) {
+        console.log('===========================status 6===========================');
         prxy ? prxy(req, res, next) : next();
     };
 };
