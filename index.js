@@ -15,7 +15,8 @@ module.exports = function (server) {
     });
 };
 
-module.exports.proxy = function (self) {
+module.exports.proxy = function () {
+    var self;
     var allow = function (domains) {
         var id, name, o,
             options = {};
@@ -59,6 +60,9 @@ module.exports.proxy = function (self) {
     var prxy;
     process.on('message', function (data) {
         switch (data.event) {
+            case 'self domain':
+                self = data.domain;
+                break;
             case 'drones update':
                 console.log('===========================status 7===========================');
                 console.log('drones : ' + JSON.stringify(data.domains));
