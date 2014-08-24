@@ -62,6 +62,7 @@ module.exports.proxy = function () {
         switch (data.event) {
             case 'self domain':
                 self = data.domain;
+                self = self.indexOf('*.') === 0 ? self.substring(2) : self;
                 break;
             case 'drones update':
                 console.log('===========================status 7===========================');
