@@ -1,7 +1,7 @@
 var proxy = require('proxy');
 
-module.exports = function (server) {
-    server.listen(function () {
+module.exports = function (server, port) {
+    var serve = function () {
         var address = server.address();
         console.log('listening on ' + JSON.stringify(address));
         if (!process.send) {
@@ -12,7 +12,8 @@ module.exports = function (server) {
             address: address,
             pid: process.pid
         });
-    });
+    };
+    port ? server.listen(port, serve) : server.listen(serve);
 };
 
 module.exports.proxy = function () {
