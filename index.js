@@ -18,59 +18,98 @@ module.exports = function (server, port) {
 
 module.exports.proxy = function () {
     var self;
-    var allow = function (domains) {
-        var id, name, o,
-            options = {};
-        for (id in domains) {
-            if (domains.hasOwnProperty(id)) {
-                o = domains[id];
-                name = o.domain.name;
-                console.log('name : ' + name);
-                if (name.indexOf('*.') === 0) {
-                    console.log('load balancing drone : ' + name);
-                    name = name.substring(2);
-                    console.log('domain : ' + name + ' self : ' + self);
-                    if (self === name) {
-                        console.log('self domain, skipping proxying');
-                        continue;
-                    }
-                } else if (self !== name) {
-                    console.log('non-self non load balancing drone, skipping proxying');
-                    continue;
-                }
-                options[name] = o.drones;
+    var allowed = {};
+
+    var join = function (drone) {
+        var domain = drone.domain;
+        if (domain.indexOf('*.') === 0) {
+            console.log('load balancing drone : ' + domain);
+            domain = domain.substring(2);
+            console.log('domain : ' + domain + ' self : ' + self);
+            if (self === domain) {
+                console.log('self domain, skipping proxying');
+                return;
+            }
+        } else if (self !== domain) {
+            console.log('non-self non load balancing drone, skipping proxying');
+            return;
+        }
+        var o = allowed[domain] || (allowed[domain] = []);
+        var drn = {
+            ip: drone.ip,
+            port: drone.port
+        };
+        o.push(drn);
+        console.log('adding drone for load balancing');
+        console.log(drn);
+        return allowed;
+    };
+
+    var left = function (drone) {
+        var domain = drone.domain;
+        if (domain.indexOf('*.') === 0) {
+            console.log('load balancing drone : ' + domain);
+            domain = domain.substring(2);
+            console.log('domain : ' + domain + ' self : ' + self);
+            if (self === domain) {
+                console.log('self domain, skipping proxying');
+                return;
+            }
+        } else if (self !== domain) {
+            console.log('non-self non load balancing drone, skipping proxying');
+            return;
+        }
+        var i, o;
+        var drones = allowed[domain] || (allowed[domain] = []);
+        var length = drones.length;
+        for (i = 0; i < length; i++) {
+            o = drones[i];
+            if (o.ip === drone.ip && o.port === drone.port) {
+                drones.splice(i, 1);
+                console.log('leaving drone from load balancing');
+                console.log(o);
+                break;
             }
         }
-        console.log('proxying allowed : ' + JSON.stringify(options));
-        return options;
+        return allowed;
     };
-    /*var disallow = function (drone) {
-     var opts = options[drone.domain];
-     if (!opts) {
-     return;
-     }
-     var i, length = opts.length;
-     for (i = 0; i < length; i++) {
-     var opt = opts[i];
-     if (opt.ip === drone.ip && opt.port === drone.port) {
-     opt.splice(i, 1);
-     break;
-     }
-     }
-     };*/
+
+    var init = function (domains) {
+        var id, dom;
+        allowed = {};
+        for (id in domains) {
+            if (domains.hasOwnProperty(id)) {
+                dom = domains[id];
+                dom.drones.forEach(function (drone) {
+                    drone.domain = dom.name;
+                    join(drone);
+                });
+            }
+        }
+    };
+
     var prxy;
     process.on('message', function (data) {
+        console.log('message:' + data.event);
+        console.log(data);
         switch (data.event) {
             case 'self domain':
                 self = data.domain;
                 self = self.indexOf('*.') === 0 ? self.substring(2) : self;
+                console.log('self domain:' + self);
                 break;
-            case 'drones update':
-                console.log('drones : ' + JSON.stringify(data.domains));
-                prxy = proxy(allow(data.domains));
+            case 'drones init':
+                prxy = proxy(init(data.domains));
+                break;
+            case 'drone joined':
+                prxy = proxy(join(data.drone));
+                break;
+            case 'drone left':
+                prxy = proxy(left(data.drone));
                 break;
         }
     });
+
     return function (req, res, next) {
         prxy ? prxy(req, res, next) : next();
     };
