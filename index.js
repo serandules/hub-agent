@@ -28,11 +28,11 @@ module.exports.proxy = function () {
             console.log('domain : ' + domain + ' self : ' + self);
             if (self === domain) {
                 console.log('self domain, skipping proxying');
-                return;
+                return allowed;
             }
         } else if (self !== domain) {
             console.log('non-self non load balancing drone, skipping proxying');
-            return;
+            return allowed;
         }
         var o = allowed[domain] || (allowed[domain] = []);
         var drn = {
@@ -53,11 +53,11 @@ module.exports.proxy = function () {
             console.log('domain : ' + domain + ' self : ' + self);
             if (self === domain) {
                 console.log('self domain, skipping proxying');
-                return;
+                return allowed;
             }
         } else if (self !== domain) {
             console.log('non-self non load balancing drone, skipping proxying');
-            return;
+            return allowed;
         }
         var i, o;
         var drones = allowed[domain] || (allowed[domain] = []);
@@ -86,6 +86,7 @@ module.exports.proxy = function () {
                 });
             }
         }
+        return allowed;
     };
 
     var prxy;
@@ -114,3 +115,5 @@ module.exports.proxy = function () {
         prxy ? prxy(req, res, next) : next();
     };
 };
+
+//TODO: restarting breaks
