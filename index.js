@@ -36,6 +36,7 @@ module.exports.proxy = function () {
         }
         var o = allowed[domain] || (allowed[domain] = []);
         var drn = {
+            id: drone.id,
             ip: drone.ip,
             port: drone.port
         };
@@ -64,7 +65,7 @@ module.exports.proxy = function () {
         var length = drones.length;
         for (i = 0; i < length; i++) {
             o = drones[i];
-            if (o.ip === drone.ip && o.port === drone.port) {
+            if (o.id === drone.id) {
                 drones.splice(i, 1);
                 console.log('leaving drone from load balancing');
                 console.log(o);
