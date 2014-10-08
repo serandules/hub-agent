@@ -91,7 +91,10 @@ module.exports.proxy = function () {
     };
 
     var prxy;
-    process.on('message', function (data) {
+    var initialized = false;
+    var pending = [];
+
+    var exec = function (data) {
         console.log('message:' + data.event);
         console.log(data);
         switch (data.event) {
@@ -110,6 +113,26 @@ module.exports.proxy = function () {
                 prxy = proxy(left(data.drone));
                 break;
         }
+    };
+
+    process.on('message', function (data) {
+        if (initialized) {
+            exec(data);
+            return;
+        }
+        if (data.event !== 'drones init') {
+            pending.push(data);
+            return;
+        }
+        //process init request
+        pending.sort(function (a, b) {
+            return b.at - a.at;
+        });
+        pending.forEach(function (data) {
+            exec(data);
+        });
+        pending = null;
+        initialized = true;
     });
 
     return function (req, res, next) {
