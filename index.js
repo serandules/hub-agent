@@ -1,4 +1,7 @@
 var proxy = require('proxy');
+var uuid = require('node-uuid');
+
+var configs = {};
 
 module.exports = function (server, port) {
     var serve = function () {
@@ -11,6 +14,15 @@ module.exports = function (server, port) {
             event: 'drone started',
             address: address,
             pid: process.pid
+        });
+        process.on('message', function (data) {
+            if (data.event !== 'drone configed') {
+                return;
+            }
+            console.log('event:drone configed id:' + data.id + ' name:' + data.name);
+            var fn = configs[data.id];
+            fn(data.value);
+            delete configs[data.id];
         });
     };
     port ? server.listen(port, serve) : server.listen(serve);
@@ -94,15 +106,10 @@ module.exports.proxy = function () {
     var initialized = false;
     var pending = [];
 
-    var exec = function (data) {
+    var proxup = function (data) {
         console.log('message:' + data.event);
         console.log(data);
         switch (data.event) {
-            case 'self domain':
-                self = data.domain;
-                self = self.indexOf('*.') === 0 ? self.substring(2) : self;
-                console.log('self domain:' + self);
-                break;
             case 'drones init':
                 prxy = proxy(init(data.domains));
                 break;
@@ -116,23 +123,29 @@ module.exports.proxy = function () {
     };
 
     process.on('message', function (data) {
-        if (initialized) {
-            exec(data);
-            return;
+        switch (data.event) {
+            case 'drone join':
+            case 'drone left':
+                return initialized ? proxup(data) : pending.push(data);
+            case 'self domain':
+                self = data.domain;
+                self = self.indexOf('*.') === 0 ? self.substring(2) : self;
+                console.log('self domain:' + self);
+                break;
+            case 'drones init':
+                //process init request
+                pending.sort(function (a, b) {
+                    return b.at - a.at;
+                });
+                pending.forEach(function (data) {
+                    proxup(data);
+                });
+                pending = null;
+                initialized = true;
+                break;
+            default :
+                break;
         }
-        if (data.event !== 'drones init') {
-            pending.push(data);
-            return;
-        }
-        //process init request
-        pending.sort(function (a, b) {
-            return b.at - a.at;
-        });
-        pending.forEach(function (data) {
-            exec(data);
-        });
-        pending = null;
-        initialized = true;
     });
 
     return function (req, res, next) {
@@ -140,4 +153,12 @@ module.exports.proxy = function () {
     };
 };
 
-//TODO: restarting breaks
+module.exports.config = function (name, fn) {
+    var id = uuid.v4();
+    process.send({
+        id: id,
+        event: 'drone config',
+        name: name
+    });
+    configs[id] = fn;
+};
