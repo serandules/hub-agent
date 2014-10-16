@@ -134,13 +134,14 @@ module.exports.proxy = function () {
                 break;
             case 'drones init':
                 //process init request
+                pending.push(data);
                 pending.sort(function (a, b) {
                     return b.at - a.at;
                 });
                 pending.forEach(function (data) {
                     proxup(data);
                 });
-                pending = null;
+                pending = [];
                 initialized = true;
                 break;
             default :
