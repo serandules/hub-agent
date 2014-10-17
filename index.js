@@ -107,7 +107,7 @@ module.exports.proxy = function () {
     var pending = [];
 
     var proxup = function (data) {
-        console.log('message:' + data.event);
+        console.log('proxup:' + data.event);
         console.log(data);
         switch (data.event) {
             case 'drones init':
@@ -123,8 +123,10 @@ module.exports.proxy = function () {
     };
 
     process.on('message', function (data) {
+        console.log('message:' + data.event);
+        console.log(data);
         switch (data.event) {
-            case 'drone join':
+            case 'drone joined':
             case 'drone left':
                 return initialized ? proxup(data) : pending.push(data);
             case 'self domain':
