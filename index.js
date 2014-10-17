@@ -19,7 +19,7 @@ module.exports = function (server, port) {
             if (data.event !== 'drone configed') {
                 return;
             }
-            console.log('event:drone configed id:' + data.id + ' name:' + data.name);
+            console.log('event:drone configed id:' + data.id);
             var fn = configs[data.id];
             fn(data.value);
             delete configs[data.id];
