@@ -110,7 +110,7 @@ module.exports.proxy = function () {
         console.log('proxup:' + data.event);
         console.log(data);
         switch (data.event) {
-            case 'drones init':
+            case 'drone init':
                 prxy = proxy(init(data.domains));
                 break;
             case 'drone joined':
@@ -134,7 +134,7 @@ module.exports.proxy = function () {
                 self = self.indexOf('*.') === 0 ? self.substring(2) : self;
                 console.log('self domain:' + self);
                 break;
-            case 'drones init':
+            case 'drone init':
                 //process init request
                 pending.push(data);
                 pending.sort(function (a, b) {
