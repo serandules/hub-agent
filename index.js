@@ -165,3 +165,8 @@ module.exports.config = function (name, fn) {
     });
     configs[id] = fn;
 };
+
+module.exports.error = function (err, req, res, next) {
+    console.log(err.stack);
+    res.status(500).send('internal server error');
+};
