@@ -1,4 +1,4 @@
-var debug = require('debug')('serandules-hub-agent');
+var debug = require('debug')('serandules:hub-agent');
 var proxy = require('proxy');
 var uuid = require('node-uuid');
 
