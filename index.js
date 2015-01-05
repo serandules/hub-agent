@@ -1,3 +1,4 @@
+var debug = require('debug')('serandules-hub-agent');
 var proxy = require('proxy');
 var uuid = require('node-uuid');
 
@@ -6,7 +7,7 @@ var configs = {};
 module.exports = function (server, port) {
     var serve = function () {
         var address = server.address();
-        console.log('listening on ' + JSON.stringify(address));
+        debug('listening on ' + JSON.stringify(address));
         if (!process.send) {
             return;
         }
@@ -19,7 +20,7 @@ module.exports = function (server, port) {
             if (data.event !== 'drone configed') {
                 return;
             }
-            console.log('event:drone configed id:' + data.id);
+            debug('event:drone configed id:' + data.id);
             var fn = configs[data.id];
             fn(data.value);
             delete configs[data.id];
@@ -35,15 +36,15 @@ module.exports.proxy = function () {
     var join = function (drone) {
         var domain = drone.domain;
         if (domain.indexOf('*.') === 0) {
-            console.log('load balancing drone : ' + domain);
+            debug('load balancing drone : ' + domain);
             domain = domain.substring(2);
-            console.log('domain : ' + domain + ' self : ' + self);
+            debug('domain : ' + domain + ' self : ' + self);
             if (self === domain) {
-                console.log('self domain, skipping proxying');
+                debug('self domain, skipping proxying');
                 return allowed;
             }
         } else if (self !== domain) {
-            console.log('non-self non load balancing drone, skipping proxying');
+            debug('non-self non load balancing drone, skipping proxying');
             return allowed;
         }
         var o = allowed[domain] || (allowed[domain] = []);
@@ -53,23 +54,23 @@ module.exports.proxy = function () {
             port: drone.port
         };
         o.push(drn);
-        console.log('adding drone for load balancing');
-        console.log(drn);
+        debug('adding drone for load balancing');
+        debug(drn);
         return allowed;
     };
 
     var left = function (drone) {
         var domain = drone.domain;
         if (domain.indexOf('*.') === 0) {
-            console.log('load balancing drone : ' + domain);
+            debug('load balancing drone : ' + domain);
             domain = domain.substring(2);
-            console.log('domain : ' + domain + ' self : ' + self);
+            debug('domain : ' + domain + ' self : ' + self);
             if (self === domain) {
-                console.log('self domain, skipping proxying');
+                debug('self domain, skipping proxying');
                 return allowed;
             }
         } else if (self !== domain) {
-            console.log('non-self non load balancing drone, skipping proxying');
+            debug('non-self non load balancing drone, skipping proxying');
             return allowed;
         }
         var i, o;
@@ -79,8 +80,8 @@ module.exports.proxy = function () {
             o = drones[i];
             if (o.id === drone.id) {
                 drones.splice(i, 1);
-                console.log('leaving drone from load balancing');
-                console.log(o);
+                debug('leaving drone from load balancing');
+                debug(o);
                 break;
             }
         }
@@ -107,8 +108,8 @@ module.exports.proxy = function () {
     var pending = [];
 
     var proxup = function (data) {
-        console.log('proxup:' + data.event);
-        console.log(data);
+        debug('proxup:' + data.event);
+        debug(data);
         switch (data.event) {
             case 'drone init':
                 prxy = proxy(init(data.domains));
@@ -123,8 +124,8 @@ module.exports.proxy = function () {
     };
 
     process.on('message', function (data) {
-        console.log('message:' + data.event);
-        console.log(data);
+        debug('message:' + data.event);
+        debug(data);
         switch (data.event) {
             case 'drone joined':
             case 'drone left':
@@ -132,7 +133,7 @@ module.exports.proxy = function () {
             case 'self domain':
                 self = data.domain;
                 self = self.indexOf('*.') === 0 ? self.substring(2) : self;
-                console.log('self domain:' + self);
+                debug('self domain:' + self);
                 break;
             case 'drone init':
                 //process init request
@@ -167,6 +168,6 @@ module.exports.config = function (name, fn) {
 };
 
 module.exports.error = function (err, req, res, next) {
-    console.log(err.stack);
+    debug(err.stack);
     res.status(500).send('internal server error');
 };
