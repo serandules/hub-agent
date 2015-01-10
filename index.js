@@ -23,14 +23,6 @@ module.exports = function (run) {
         worker = cluster.fork();
         worker.on('message', (function (worker) {
             return function (data) {
-                /*if (data.event !== 'drone configed') {
-                 return;
-                 }
-                 debug('event:drone configed id:' + data.id);
-                 var fn = configs[data.id];
-                 fn(data.value);
-                 delete configs[data.id];*/
-                debug('++++++++++++++++++++++++++++' + data.id + ' ' + data.event);
                 queue[data.id] = worker;
                 process.send(data);
             };
@@ -54,7 +46,6 @@ module.exports = function (run) {
             });
         };
         process.on('message', function (data) {
-            debug('++++++++++++++++++++++++++++--------------------============================' + data.id + ' ' + data.event);
             var id;
             switch (data.event) {
                 case 'drone configed':
@@ -186,7 +177,6 @@ module.exports.proxy = function () {
     };
 
     process.on('message', function (data) {
-        debug('-------------------------------------------------------' + data.event);
         debug('message:' + data.event);
         debug(data);
         switch (data.event) {
