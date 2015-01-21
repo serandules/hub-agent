@@ -12,19 +12,46 @@ var workers = [];
 
 var queue = {};
 
+var online = false;
+
+var trace = function (configs) {
+    debug('tracing start configs : ');
+    for (var key in configs) {
+        if (configs.hasOwnProperty(key)) {
+            debug(key);
+        }
+    }
+    debug('tracing end configs : ');
+};
+
 module.exports = function (run) {
     if (cluster.isWorker) {
+        process.on('message', function (data) {
+            var id = data.id;
+            switch (data.event) {
+                case 'drone configed':
+                    debug('event:drone configed id:' + id);
+                    var fn = configs[id];
+                    fn(data.value);
+                    delete configs[id];
+                    break;
+            }
+        });
+        debug('worker started listening');
         run();
         return;
     }
+    debug('starting master process');
     // Fork workers.
     var worker;
+    var pending = [];
     for (var i = 0; i < cpus; i++) {
         worker = cluster.fork();
         worker.on('message', (function (worker) {
             return function (data) {
+                debug('proxying message from master : ' + data.event);
                 queue[data.id] = worker;
-                process.send(data);
+                online ? process.send(data) : pending.push(data);
             };
         }(worker)));
         workers.push(worker);
@@ -37,24 +64,17 @@ module.exports = function (run) {
             debug('worker started listening');
             return;
         }
-        if (!process.send) {
-            return;
-        }
         var broadcast = function (data) {
             workers.forEach(function (worker) {
                 worker.send(data);
             });
         };
+        debug('master start listening');
         process.on('message', function (data) {
-            var id;
+            debug('master message:' + data.event);
+            debug(data);
+            var worker;
             switch (data.event) {
-                case 'drone configed':
-                    id = data.id;
-                    debug('event:drone configed id:' + id);
-                    var fn = configs[id];
-                    fn(data.value);
-                    delete configs[id];
-                    break;
                 case 'drone init':
                     broadcast(data);
                     break;
@@ -68,8 +88,16 @@ module.exports = function (run) {
                     broadcast(data);
                     break;
                 default:
+                    worker = queue[data.id];
+                    worker.send(data);
+                    delete queue[data.id];
+                    break;
             }
         });
+        pending.forEach(function (data) {
+            process.send(data);
+        });
+        pending = [];
         process.send({
             event: 'drone started',
             address: address,
@@ -212,6 +240,7 @@ module.exports.proxy = function () {
 
 module.exports.config = function (name, fn) {
     var id = uuid.v4();
+    debug('sending config request ' + name + ' : ' + id);
     process.send({
         id: id,
         event: 'drone config',
