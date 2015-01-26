@@ -35,7 +35,7 @@ module.exports = function (domain, run, workers) {
             log.debug('all workers started');
         }
         var drone = procevent(process);
-        drone.emit('started', address.port, process.pid);
+        drone.emit('started', process.pid, address);
     });
     process.on('uncaughtException', function (err) {
         log.error('unhandled exception %s', err);
