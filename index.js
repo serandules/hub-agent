@@ -19,8 +19,10 @@ module.exports = function (domain, run, workers) {
     }
     cluster.on('exit', function (worker, code, signal) {
         if (log.debug) {
-            log.debug('worker %s stopped with code: %s, signal: %s', worker.process.pid, code, signal);
+            log.debug('%s worker %s stopped (%s)', domain, worker.process.pid, signal || code);
+            log.debug('%s worker restarting', domain);
         }
+        cluster.fork();
     });
     cluster.on('listening', function (worker, address) {
         if (log.debug) {
@@ -35,10 +37,9 @@ module.exports = function (domain, run, workers) {
         var drone = procevent(process);
         drone.emit('started', address.port, process.pid);
     });
-
     process.on('uncaughtException', function (err) {
         log.error('unhandled exception %s', err);
-        if(log.debug) {
+        if (log.debug) {
             log.trace(err.stack);
         }
     });
