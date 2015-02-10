@@ -13,6 +13,8 @@ var master = procevent(process);
 
 var cpus = require('os').cpus().length;
 
+var debug = true;
+
 module.exports = function (domain, run, forks) {
     if (cluster.isWorker) {
         return run();
@@ -24,8 +26,19 @@ module.exports = function (domain, run, forks) {
     if (log.debug) {
         log.debug('forking workers');
     }
+    cluster.setupMaster({
+        execArgv: process.execArgv.filter(function (s) {
+            return s !== '--debug'
+        })
+    });
     for (i = 0; i < forks; i++) {
+        if (debug) {
+            cluster.settings.execArgv.push('--debug=' + (5859 + i));
+        }
         worker = cluster.fork();
+        if (debug) {
+            cluster.settings.execArgv.pop();
+        }
         drones[worker.process.pid] = {
             worker: worker,
             procevent: procevent(worker.process)
