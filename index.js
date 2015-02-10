@@ -5,7 +5,6 @@ var events = require('events');
 var util = require('util');
 var uuid = require('node-uuid');
 var https = require('https');
-var fs = require('fs');
 var socproc = require('socproc-client');
 var agent = require('./lib/agent');
 
@@ -13,15 +12,34 @@ var master = procevent(process);
 
 var cpus = require('os').cpus().length;
 
-var debug = true;
+//TODO: fix debug port conflict
+var debug = false;
+
+var fork = function (drones) {
+    if (debug) {
+        cluster.settings.execArgv.push('--debug=' + (5859));
+    }
+    var worker = cluster.fork();
+    if (debug) {
+        cluster.settings.execArgv.pop();
+    }
+    drones[worker.process.pid] = {
+        worker: worker,
+        procevent: procevent(worker.process)
+    };
+};
 
 module.exports = function (domain, run, forks) {
+
+    process.on('uncaughtException', function (err) {
+        log.fatal('unhandled exception %s', err);
+        log.trace(err.stack);
+    });
+
     if (cluster.isWorker) {
         return run();
     }
     forks = forks || cpus;
-    var i;
-    var worker;
     var drones = {};
     if (log.debug) {
         log.debug('forking workers');
@@ -31,18 +49,9 @@ module.exports = function (domain, run, forks) {
             return s !== '--debug'
         })
     });
+    var i;
     for (i = 0; i < forks; i++) {
-        if (debug) {
-            cluster.settings.execArgv.push('--debug=' + (5859 + i));
-        }
-        worker = cluster.fork();
-        if (debug) {
-            cluster.settings.execArgv.pop();
-        }
-        drones[worker.process.pid] = {
-            worker: worker,
-            procevent: procevent(worker.process)
-        };
+        fork(drones);
     }
     cluster.on('exit', function (worker, code, signal) {
         if (log.debug) {
@@ -50,11 +59,7 @@ module.exports = function (domain, run, forks) {
             log.debug('%s worker restarting', domain);
         }
         delete drones[worker.process.pid];
-        worker = cluster.fork();
-        drones[worker.process.pid] = {
-            worker: worker,
-            procevent: procevent(worker.process)
-        };
+        fork(drones);
     });
     cluster.on('listening', function (worker, address) {
         if (log.debug) {
@@ -88,10 +93,4 @@ module.exports = function (domain, run, forks) {
             }
         });
     });
-    /*process.on('uncaughtException', function (err) {
-     log.error('unhandled exception %s', err);
-     if (log.debug) {
-     log.trace(err.stack);
-     }
-     });*/
 };
