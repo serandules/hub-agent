@@ -8,8 +8,6 @@ var https = require('https');
 var socproc = require('socproc-client');
 var agent = require('./lib/agent');
 
-var master = procevent(process);
-
 var cpus = require('os').cpus().length;
 
 //TODO: fix debug port conflict
@@ -25,18 +23,30 @@ var fork = function (drones) {
     }
     drones[worker.process.pid] = {
         worker: worker,
-        procevent: procevent(worker.process)
+        procevent: procevent(worker.process) //TODO
     };
 };
 
-module.exports = function (domain, run, forks) {
+module.exports = function (domain, run, done, forks) {
 
-    process.on('uncaughtException', function (err) {
-        log.fatal('unhandled exception %s', err);
-        log.trace(err.stack);
-    });
-
+    /*process.on('uncaughtException', function (err) {
+     log.fatal('unhandled exception %s', err);
+     log.trace(err.stack);
+     });*/
+    if (typeof done !== 'function') {
+        forks = done;
+        done = null;
+    }
+    var drone;
     if (cluster.isWorker) {
+        drone = procevent(process); //TODO
+        drone.once('ready', function () {
+            log.info('ready event fired');
+            if (!done) {
+                return;
+            }
+            done(false, drone);
+        });
         return run();
     }
     forks = forks || cpus;
@@ -59,7 +69,7 @@ module.exports = function (domain, run, forks) {
             log.debug('%s worker restarting', domain);
         }
         delete drones[worker.process.pid];
-        fork(drones);
+        //fork(drones);
     });
     cluster.on('listening', function (worker, address) {
         if (log.debug) {
@@ -71,24 +81,26 @@ module.exports = function (domain, run, forks) {
         if (log.debug) {
             log.debug('all workers started');
         }
+        var master = procevent(process);
         master.emit('started', process.pid, address);
+        master.destroy();
         agent(function (agent) {
             var id;
-            var drone;
-            agent.domain = domain;
             for (id in drones) {
                 if (drones.hasOwnProperty(id)) {
-                    drone = drones[id];
-                    drone.procevent.emit('ready');
-                    drone.procevent.on('emit', function (event, id, p1, p2) {
-                        if (log.debug) {
-                            log.debug('emit %s %s %s %s', event, id, p1, p2);
-                        }
-                        //hub.emit.apply(hub, ['emit'].concat(Array.prototype.slice.call(arguments)));
-                        agent.emiton(event, p1, p2, function (err, q1, q2) {
-                            log.debug('emiton callback %s %s %s', err, q1, q2);
+                    (function (drone) {
+                        drone.procevent.emit('ready');
+                        drone.procevent.on('emit', function (event, id, pid, p1, p2) {
+                            if (log.debug) {
+                                log.debug('emit %s %s %s %s', event, id, p1, p2);
+                            }
+                            //hub.emit.apply(hub, ['emit'].concat(Array.prototype.slice.call(arguments)));
+                            agent.emiton(event, p1, p2, function (err, q1, q2) {
+                                log.debug('emiton callback %s, %s, %s, %s, %s', event, id, err, q1, q2);
+                                drone.procevent.emit('emitted', id, pid, Array.prototype.slice.call(arguments, 1));
+                            });
                         });
-                    })
+                    }(drones[id]));
                 }
             }
         });
