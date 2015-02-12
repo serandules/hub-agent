@@ -27,6 +27,18 @@ var fork = function (drones) {
     };
 };
 
+var broadcast = function (event, drones, args) {
+    var drone;
+    var id;
+    args = Array.prototype.slice.call(args);
+    for (id in drones) {
+        if (drones.hasOwnProperty(id)) {
+            drone = drones[id];
+            drone.procevent.emit.apply(drone.procevent, [event].concat(args));
+        }
+    }
+};
+
 module.exports = function (domain, run, done, forks) {
 
     /*process.on('uncaughtException', function (err) {
@@ -103,6 +115,12 @@ module.exports = function (domain, run, done, forks) {
                     }(drones[id]));
                 }
             }
+            agent.on('join', function () {
+                broadcast('join', drones, arguments);
+            });
+            agent.on('leave', function () {
+                broadcast('leave', drones, arguments);
+            });
         });
     });
 };
