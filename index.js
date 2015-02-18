@@ -1,14 +1,26 @@
 var log = require('logger')('hub-agent');
-var channel = require('./lib/channel');
-var clustor = require('./lib/cluster');
-var hubber = require('./lib/hubber');
+var fs = require('fs');
+var https = require('https');
+var io = require('socket.io-client');
 
-module.exports.cluster = clustor;
+var configs = require('hub-configs');
 
-module.exports.channel = channel;
+module.exports = function (ns, done) {
+    var agent = new https.Agent({
+        key: fs.readFileSync(configs.ssl.key),
+        cert: fs.readFileSync(configs.ssl.cert),
+        ca: [fs.readFileSync(configs.ssl.ca)]
+    });
 
-module.exports.start = hubber.start;
+    var socket = io('wss://' + configs.domain + ':' + configs.port + ns, {
+        transports: ['websocket'],
+        agent: agent,
+        query: 'token=' + configs.token
+    });
 
-module.exports.stop = hubber.stop;
+    socket.on('connect', function () {
+        log.info('connected hub %s', ns);
+    });
 
-module.exports.restart = hubber.restart;
+    done(false, socket);
+};
