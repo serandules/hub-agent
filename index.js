@@ -21,35 +21,38 @@ var agent = function (ns, done) {
 
     socket.on('connect', function () {
         log.info('connected hub %s', ns);
+        done(false, socket);
     });
-
-    done(false, socket);
 };
 
 var config;
 
 var queue = [];
 
-var conf = function (name, done) {
+var confs = function (name, done) {
     var id = uuid.v4();
-    config.emit(config, id, name);
+    config.emit('config', id, name);
     config.once(id, function (value) {
         done(value);
     });
 };
 
 agent('/configs', function (err, io) {
-    io.once('connection', function () {
-        config = io;
-        queue.forEach(function (done) {
-            done(conf);
-        });
+    config = io;
+    queue.forEach(function (o) {
+        confs(o.name, o.done);
     });
 });
 
 module.exports = agent;
 
-module.exports.config = function (done) {
-    config ? done(conf) : queue.push(done);
+module.exports.config = function (name, done) {
+    if (!config) {
+        return queue.push({
+            name: name,
+            done: done
+        });
+    }
+    confs(name, done);
 };
 
