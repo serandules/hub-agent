@@ -19,7 +19,7 @@ var agent = function (ns, done) {
         query: 'token=' + configs.token
     });
 
-    socket.on('connect', function () {
+    socket.once('connect', function () {
         log.info('connected hub %s', ns);
         done(false, socket);
     });
