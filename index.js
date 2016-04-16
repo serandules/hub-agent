@@ -6,6 +6,8 @@ var io = require('socket.io-client');
 
 var configs = require('hub-configs');
 
+
+//TODO: fix socket-client reconnect memory leak
 var agent = function (ns, done) {
     var agent = new https.Agent({
         key: fs.readFileSync(configs.ssl.key),
@@ -22,6 +24,14 @@ var agent = function (ns, done) {
     socket.once('connect', function () {
         log.info('connected hub %s', ns);
         done(false, socket);
+    });
+
+    socket.on('connect_error', function (err) {
+        log.error(err);
+    });
+
+    socket.on('reconnect_error', function (err) {
+        log.error(err);
     });
 };
 
